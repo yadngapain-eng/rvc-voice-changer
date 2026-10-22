@@ -19,7 +19,7 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 audio_url  = sys.argv[1]
-model_name = sys.argv[2] if len(sys.argv) > 2 else "f0G40k"
+model_name = sys.argv[2] if len(sys.argv) > 2 else "V2-AISO-HOWATTO"
 
 rvc_dir = "Retrieval-based-Voice-Conversion-WebUI"
 if not os.path.isdir(rvc_dir):
@@ -43,18 +43,18 @@ print(f"Audio: {input_wav}")
 os.chdir(rvc_dir)
 
 model_file = os.path.join("assets", "weights", f"{model_name}.pth")
+index_file = os.path.join("assets", "weights", "trained_IVF832_Flat_nprobe_1_v2.index")
+
 if not os.path.exists(model_file):
-    print(f"PERINGATAN: {model_file} tidak ada. Fallback ke f0G40k...")
-    model_name = "f0G40k"
-    model_file = os.path.join("assets", "weights", "f0G40k.pth")
-    if not os.path.exists(model_file):
-        print("Fallback gagal, coba ffmpeg pitch shift...")
-        os.chdir("..")
-        run_cmd(["ffmpeg", "-y", "-i", input_wav,
-                 "-af", "asetrate=44100*1.4,aresample=44100", output_wav])
-        sys.exit(0)
+    print(f"PERINGATAN: {model_file} tidak ada!")
+    sys.exit(1)
 
 print(f"Memakai model: {model_name}")
+
+# RVC membutuhkan index_path agar suara lebih mirip (index_rate > 0)
+index_path_arg = []
+if os.path.exists(index_file):
+    index_path_arg = ["--index_path", index_file]
 
 cmd = [
     sys.executable, "infer_cli.py",
@@ -63,7 +63,8 @@ cmd = [
     "--model_name", model_name,
     "--f0method", "rmvpe",
     "--f0up_key", "12",
-]
+    "--index_rate", "0.75", # Menggunakan index untuk hasil terbaik
+] + index_path_arg
 
 try:
     run_cmd(cmd)

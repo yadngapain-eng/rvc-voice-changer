@@ -1,4 +1,4 @@
-name: RVC Voice Changer (Multi Model)
+name: RVC Voice Changer (5 Japanese Girls)
 
 on:
   workflow_dispatch:
@@ -7,15 +7,16 @@ on:
         description: 'Link Google Drive File Audio (MP3/WAV)'
         required: true
       model_choice:
-        description: 'Pilih model'
+        description: 'Pilih Model Suara'
         type: choice
         required: true
-        default: 'f0G40k'
+        default: 'V2-AISO-HOWATTO'
         options:
-          - f0G40k
-          - pretrained_female
-          - pretrained_male
-          - custom_female
+          - V2-AISO-HOWATTO
+          - V2-AISO-KAKKOII
+          - V2-AISO-SARASARA
+          - V2-AISO-SITTORI
+          - V2-AISO-SYAKITTO
 
 jobs:
   convert:
@@ -43,14 +44,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v15
+          key: ${{ runner.os }}-pip-rvc-v16
 
       - name: Cache RVC Repo
         uses: actions/cache@v4
         id: rvc-cache
         with:
           path: Retrieval-based-Voice-Conversion-WebUI
-          key: ${{ runner.os }}-rvc-repo-v15
+          key: ${{ runner.os }}-rvc-repo-v16
 
       - name: Clone RVC Repo
         if: steps.rvc-cache.outputs.cache-hit != 'true'
@@ -110,47 +111,41 @@ jobs:
       - name: Download RVC Pretrained Base
         run: |
           mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/pretrained_v2
+          mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/rmvpe
           HF="https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main"
-          for F in hubert_base.pt rmvpe.pt; do
-            DEST="Retrieval-based-Voice-Conversion-WebUI/assets/$F"
-            if [ ! -f "$DEST" ]; then
-              echo "Download $F..."
-              curl -fL -o "$DEST" "$HF/$F" || echo "warning: gagal unduh $F"
-            fi
-          done
+          # hubert_base.pt
+          if [ ! -f "Retrieval-based-Voice-Conversion-WebUI/assets/hubert_base.pt" ]; then
+            curl -fL -o "Retrieval-based-Voice-Conversion-WebUI/assets/hubert_base.pt" "$HF/hubert_base.pt" || true
+          fi
+          # rmvpe.pt
+          if [ ! -f "Retrieval-based-Voice-Conversion-WebUI/assets/rmvpe/rmvpe.pt" ]; then
+            curl -fL -o "Retrieval-based-Voice-Conversion-WebUI/assets/rmvpe/rmvpe.pt" "$HF/rmvpe.pt" || true
+          fi
 
-      - name: Download Model
+      - name: Download Selected Model & Index
         env:
           MODEL_CHOICE: ${{ github.event.inputs.model_choice }}
         run: |
           set -e
           mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/weights
-          HF_BASE="https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2"
+          DEST_DIR="Retrieval-based-Voice-Conversion-WebUI/assets/weights"
+          BASE_URL="https://github.com/yadngapain-eng/rvc-voice-changer/releases/download/v1.0"
 
-          case "$MODEL_CHOICE" in
-            f0G40k)
-              URL="$HF_BASE/f0G40k.pth" ;;
-            pretrained_female)
-              URL="$HF_BASE/f0G40k.pth" ;;
-            pretrained_male)
-              URL="$HF_BASE/f0G40k.pth" ;;
-            custom_female)
-              URL="https://github.com/yadngapain-eng/rvc-voice-changer/releases/download/v1.0/female_model.pth" ;;
-            *)
-              echo "::error::Model tidak dikenal: $MODEL_CHOICE"; exit 1 ;;
-          esac
+          # Download model .pth
+          echo "Mengunduh $MODEL_CHOICE.pth..."
+          curl -fL -o "$DEST_DIR/$MODEL_CHOICE.pth" "$BASE_URL/$MODEL_CHOICE.pth"
 
-          DEST="Retrieval-based-Voice-Conversion-WebUI/assets/weights/${MODEL_CHOICE}.pth"
-          echo "Download $MODEL_CHOICE dari $URL"
-          curl -fL -o "$DEST" "$URL"
+          # Download index file (sama untuk semua model)
+          echo "Mengunduh index file..."
+          curl -fL -o "$DEST_DIR/trained_IVF832_Flat_nprobe_1_v2.index" "$BASE_URL/trained_IVF832_Flat_nprobe_1_v2.index"
 
-          SIZE=$(stat -c%s "$DEST")
-          echo "Ukuran: $SIZE byte"
-          if [ "$SIZE" -lt 1000000 ]; then
-            echo "::error::File terlalu kecil ($SIZE byte)"
-            head -c 300 "$DEST" || true
+          # Verifikasi ukuran model (> 10MB)
+          SIZE=$(stat -c%s "$DEST_DIR/$MODEL_CHOICE.pth")
+          if [ "$SIZE" -lt 10000000 ]; then
+            echo "::error::Model terlalu kecil ($SIZE byte)"
             exit 1
           fi
+          echo "✓ Model dan index berhasil diunduh."
 
       - name: Run Voice Changer
         env:
