@@ -26,16 +26,16 @@ jobs:
         id: pip-cache
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v8
+          key: ${{ runner.os }}-pip-rvc-v9
           restore-keys: |
-            ${{ runner.os }}-pip-rvc-v8
+            ${{ runner.os }}-pip-rvc-v9
 
       - name: Cache RVC Repo
         uses: actions/cache@v4
         id: rvc-cache
         with:
           path: Retrieval-based-Voice-Conversion-WebUI
-          key: ${{ runner.os }}-rvc-repo-v8
+          key: ${{ runner.os }}-rvc-repo-v9
 
       - name: Install System Dependencies
         run: |
@@ -55,10 +55,10 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      # TRIK TERAKHIR: Install fairseq dari wheel prebuilt (tidak di-build)
-      - name: Install Fairseq Wheel
+      # Install fairseq dari repo RESMI facebookresearch dengan --no-deps
+      - name: Install Fairseq
         run: |
-          pip install https://github.com/One-sixth/fairseq/releases/download/v0.12.2/fairseq-0.12.2-cp310-cp310-linux_x86_64.whl --no-deps
+          pip install git+https://github.com/facebookresearch/fairseq.git --no-deps
 
       - name: Install RVC Dependencies
         if: steps.rvc-cache.outputs.cache-hit != 'true'
