@@ -26,16 +26,16 @@ jobs:
         id: pip-cache
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v6
+          key: ${{ runner.os }}-pip-rvc-v7
           restore-keys: |
-            ${{ runner.os }}-pip-rvc-v6
+            ${{ runner.os }}-pip-rvc-v7
 
       - name: Cache RVC Repo
         uses: actions/cache@v4
         id: rvc-cache
         with:
           path: Retrieval-based-Voice-Conversion-WebUI
-          key: ${{ runner.os }}-rvc-repo-v6
+          key: ${{ runner.os }}-rvc-repo-v7
 
       - name: Install System Dependencies
         run: |
@@ -55,10 +55,15 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      # TRIK: Install fairseq tanpa dependensi (--no-deps)
-      - name: Install Fairseq (No Dependencies)
+      # TRIK STUB: Palsukan torch agar fairseq tidak mengunduh versi CUDA
+      - name: Install Fairseq with Torch Stub
         run: |
-          pip install git+https://github.com/One-sixth/fairseq.git --no-deps
+          # Buat file torch.py palsu di direktori kerja
+          echo "raise ImportError('Stub torch, jangan diimport')" > torch.py
+          # Install fairseq, pip akan melihat 'torch.py' dan menganggap torch sudah terpasang
+          pip install git+https://github.com/One-sixth/fairseq.git
+          # Hapus file palsu setelah selesai
+          rm torch.py
 
       - name: Install RVC Dependencies
         if: steps.rvc-cache.outputs.cache-hit != 'true'
