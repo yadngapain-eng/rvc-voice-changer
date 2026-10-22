@@ -8,8 +8,8 @@ def run_cmd(cmd):
     print(f"Menjalankan: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
+# Hanya butuh 1 argumen: Link Audio GDrive
 audio_url = sys.argv[1]
-model_url = sys.argv[2] if len(sys.argv) > 2 else ""
 
 # --- 1. CEK CACHE RVC ---
 rvc_dir = "Retrieval-based-Voice-Conversion-WebUI"
@@ -21,18 +21,12 @@ else:
 
 os.chdir(rvc_dir)
 
-# --- 2. DOWNLOAD FILE AUDIO & MODEL ---
+# --- 2. DOWNLOAD AUDIO DARI GDRIVE ---
 print("Mengunduh file audio dari Google Drive...")
 gdown.download(audio_url, "../input.wav", quiet=False, fuzzy=True)
 
-model_path = ""
-if model_url:
-    print("Mengunduh Model Suara...")
-    os.makedirs("assets/weights", exist_ok=True)
-    gdown.download(model_url, "assets/weights/custom_model.pth", quiet=False, fuzzy=True)
-    model_path = "custom_model.pth"
-else:
-    print("Tidak ada model yang diunduh. Menggunakan model default.")
+# Model sudah diunduh otomatis oleh Workflow GitHub ke assets/weights/female_model.pth
+model_path = "female_model.pth"
 
 # --- 3. PROSES KONVERSI ---
 print("Memulai konversi suara (CPU Mode)...")
@@ -40,7 +34,7 @@ cmd = [
     "python", "infer_cli.py",
     "--input_path", "../input.wav",
     "--opt_path", "../output.wav",
-    "--model_name", model_path if model_path else "default.pth",
+    "--model_name", model_path,
     "--f0method", "rmvpe",
     "--f0up_key", "12" 
 ]
