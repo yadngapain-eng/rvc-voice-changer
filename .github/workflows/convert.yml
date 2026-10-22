@@ -1,5 +1,5 @@
 
-name: RVC Voice Changer (Cached)
+name: RVC Voice Changer (Auto Model)
 
 on:
   workflow_dispatch:
@@ -7,10 +7,6 @@ on:
       audio_url:
         description: 'Link Google Drive File Audio (MP3/WAV)'
         required: true
-      model_url:
-        description: 'Link Google Drive Model (.pth) [Opsional]'
-        required: false
-        default: ''
 
 jobs:
   convert:
@@ -25,23 +21,21 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
 
-      # CACHE 1: PIP DEPENDENCIES (Library Python)
       - name: Cache Pip Packages
         uses: actions/cache@v4
         id: pip-cache
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v2
+          key: ${{ runner.os }}-pip-rvc-v3
           restore-keys: |
-            ${{ runner.os }}-pip-rvc-v2
+            ${{ runner.os }}-pip-rvc-v3
 
-      # CACHE 2: RVC REPO & MODEL (Folder Raksasa)
       - name: Cache RVC Repo
         uses: actions/cache@v4
         id: rvc-cache
         with:
           path: Retrieval-based-Voice-Conversion-WebUI
-          key: ${{ runner.os }}-rvc-repo-v2
+          key: ${{ runner.os }}-rvc-repo-v3
 
       - name: Install System Dependencies
         run: |
@@ -49,12 +43,10 @@ jobs:
           sudo apt-get install -y ffmpeg libsndfile1
 
       - name: Install Python Dependencies
-        # Hanya install jika cache pip belum ada
         if: steps.pip-cache.outputs.cache-hit != 'true'
         run: |
           pip install -r requirements.txt
 
-      # Install dependencies RVC di dalam foldernya (jika repo baru di-clone)
       - name: Install RVC Dependencies
         if: steps.rvc-cache.outputs.cache-hit != 'true'
         run: |
@@ -62,9 +54,16 @@ jobs:
           pip install -r requirements.txt
           cd ..
 
+      # UNDUH MODEL DARI RELEASE GITHUB (Bukan GDrive)
+      - name: Download Model from Release
+        run: |
+          mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/weights
+          curl -L -o Retrieval-based-Voice-Conversion-WebUI/assets/weights/female_model.pth \
+          https://github.com/yadngapain-eng/rvc-voice-changer/releases/download/v1.0/female_model.pth
+
       - name: Run Voice Changer
         run: |
-          python voice_changer.py "${{ github.event.inputs.audio_url }}" "${{ github.event.inputs.model_url }}"
+          python voice_changer.py "${{ github.event.inputs.audio_url }}"
 
       - name: Upload Result
         uses: actions/upload-artifact@v4
