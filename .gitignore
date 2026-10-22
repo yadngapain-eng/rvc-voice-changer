@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Cache & logs
+.pytest_cache/
+.mypy_cache/
+*.log
+
+# Model & audio besar (jangan commit)
+*.pth
+*.pt
+*.onnx
+*.ckpt
+*.bin
+*.wav
+*.mp3
+*.flac
+
+# Folder RVC yang di-clone saat runtime
+Retrieval-based-Voice-Conversion-WebUI/
+
+# Output
+output.wav
+outputs/

@@ -4,6 +4,13 @@ import sys
 import subprocess
 import gdown
 
+# Pastikan folder RVC bisa di-import
+_RVC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        'Retrieval-based-Voice-Conversion-WebUI')
+if os.path.isdir(_RVC_DIR) and _RVC_DIR not in sys.path:
+    sys.path.insert(0, _RVC_DIR)
+
+
 def run_cmd(cmd):
     print(f"Menjalankan: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)

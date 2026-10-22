@@ -73,7 +73,7 @@ jobs:
       # ---------------------------------------------------------------
       - name: Install Torch CPU Only
         run: |
-          pip install torch==2.4.1+cpu torchaudio==2.4.1+cpu \
+          pip install torch==2.4.1+cpu1+cpu torchaudio==2.4.1+cpu1+cpu \
             --index-url https://download.pytorch.org/whl/cpu
 
       # ---------------------------------------------------------------
@@ -117,8 +117,14 @@ jobs:
         if: steps.rvc-cache.outputs.cache-hit != 'true'
         run: |
           cd Retrieval-based-Voice-Conversion-WebUI
-          grep -v -E "torch|fairseq" requirements.txt > requirements_fixed.txt
-          pip install -r requirements_fixed.txt
+          REQ=$(find . -maxdepth 2 -name "requirements*.txt" | head -1)
+          if [ -z "$REQ" ]; then
+            echo "::warning::requirements.txt tidak ditemukan di repo RVC, skip"
+          else
+            echo "Memakai: $REQ"
+            grep -v -E "torch|fairseq" "$REQ" > requirements_fixed.txt
+            pip install -r requirements_fixed.txt
+          fi
           cd ..
 
       - name: Download Model from Release
