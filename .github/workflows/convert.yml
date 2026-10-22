@@ -73,7 +73,7 @@ jobs:
       # ---------------------------------------------------------------
       - name: Install Torch CPU Only
         run: |
-          pip install torch==2.4.1+cpu1+cpu torchaudio==2.4.1+cpu1+cpu \
+          pip install torch==2.4.1+cpucpu torchaudio==2.4.1+cpucpu \
             --index-url https://download.pytorch.org/whl/cpu
 
       # ---------------------------------------------------------------
