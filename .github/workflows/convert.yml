@@ -1,4 +1,4 @@
-name: RVC Voice Changer (Auto Model)
+name: RVC Voice Changer (Multi Model)
 
 on:
   workflow_dispatch:
@@ -6,6 +6,16 @@ on:
       audio_url:
         description: 'Link Google Drive File Audio (MP3/WAV)'
         required: true
+      model_choice:
+        description: 'Pilih model'
+        type: choice
+        required: true
+        default: 'f0G40k'
+        options:
+          - f0G40k
+          - pretrained_female
+          - pretrained_male
+          - custom_female
 
 jobs:
   convert:
@@ -14,18 +24,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # ---------------------------------------------------------------
-      # 1. Bebaskan disk space (fix "No space left on device")
-      # ---------------------------------------------------------------
       - name: Free Disk Space
         run: |
-          echo "Before:"
           df -h /
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
             /opt/hostedtoolcache/CodeQL /usr/local/share/boost
           sudo docker image prune -af || true
           sudo apt-get clean
-          echo "After:"
           df -h /
 
       - name: Setup Python
@@ -36,23 +41,17 @@ jobs:
 
       - name: Cache Pip Packages
         uses: actions/cache@v4
-        id: pip-cache
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v14
-          restore-keys: |
-            ${{ runner.os }}-pip-rvc-v14
+          key: ${{ runner.os }}-pip-rvc-v15
 
       - name: Cache RVC Repo
         uses: actions/cache@v4
         id: rvc-cache
         with:
           path: Retrieval-based-Voice-Conversion-WebUI
-          key: ${{ runner.os }}-rvc-repo-v14
+          key: ${{ runner.os }}-rvc-repo-v15
 
-      # ---------------------------------------------------------------
-      # 2. Clone repo RVC (sebelumnya TIDAK ADA -> "No such file or directory")
-      # ---------------------------------------------------------------
       - name: Clone RVC Repo
         if: steps.rvc-cache.outputs.cache-hit != 'true'
         run: |
@@ -68,41 +67,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip==23.3.2
 
-      # ---------------------------------------------------------------
-      # 3. Torch CPU — pakai pasangan versi yang valid
-      # ---------------------------------------------------------------
       - name: Install Torch CPU Only
         run: |
           pip install torch==2.4.1+cpu torchaudio==2.4.1+cpu \
             --index-url https://download.pytorch.org/whl/cpu
-      # ---------------------------------------------------------------
-      # 4. Build tools untuk --no-build-isolation
-      # ---------------------------------------------------------------
+
       - name: Install Build Tools
         run: |
           pip install setuptools wheel cython
 
-      # ---------------------------------------------------------------
-      # 5. Install requirements (TANPA kondisi if: -> cache pip tidak
-      #    menyimpan paket terinstal, hanya wheel)
-      # ---------------------------------------------------------------
       - name: Install Python Dependencies
         run: |
           pip install -r requirements.txt -c constraints.txt
 
-      # ---------------------------------------------------------------
-      # 6. fairseq: --no-build-isolation supaya pakai torch CPU yang
-      #    sudah ada, bukan download ulang torch+CUDA (~3 GB)
-      # ---------------------------------------------------------------
       - name: Install Fairseq
         run: |
           pip install git+https://github.com/facebookresearch/fairseq.git \
             --no-deps --no-build-isolation -c constraints.txt
 
-      # ---------------------------------------------------------------
-      # 7. Deps runtime fairseq — versi yang SESUAI dengan fairseq 0.12.2
-      #    (fairseq butuh hydra-core<1.1, omegaconf<2.1, sacrebleu)
-      # ---------------------------------------------------------------
       - name: Install Fairseq Runtime Deps
         run: |
           pip install \
@@ -118,37 +100,66 @@ jobs:
           cd Retrieval-based-Voice-Conversion-WebUI
           REQ=$(find . -maxdepth 2 -name "requirements*.txt" | head -1)
           if [ -z "$REQ" ]; then
-            echo "::warning::requirements.txt tidak ditemukan di repo RVC, skip"
+            echo "::warning::requirements.txt tidak ditemukan, skip"
           else
-            echo "Memakai: $REQ"
             grep -v -E "torch|fairseq" "$REQ" > requirements_fixed.txt
             pip install -r requirements_fixed.txt
           fi
           cd ..
 
-      - name: Download Model from Release
+      - name: Download RVC Pretrained Base
         run: |
-          mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/weights
-          curl -fL -o Retrieval-based-Voice-Conversion-WebUI/assets/weights/female_model.pth \
-          https://github.com/yadngapain-eng/rvc-voice-changer/releases/download/v1.0/female_model.pth
+          mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/pretrained_v2
+          HF="https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main"
+          for F in hubert_base.pt rmvpe.pt; do
+            DEST="Retrieval-based-Voice-Conversion-WebUI/assets/$F"
+            if [ ! -f "$DEST" ]; then
+              echo "Download $F..."
+              curl -fL -o "$DEST" "$HF/$F" || echo "warning: gagal unduh $F"
+            fi
+          done
 
-      - name: Verifikasi model terunduh
+      - name: Download Model
+        env:
+          MODEL_CHOICE: ${{ github.event.inputs.model_choice }}
         run: |
-          MODEL="Retrieval-based-Voice-Conversion-WebUI/assets/weights/female_model.pth"
-          SIZE=$(stat -c%s "$MODEL" 2>/dev/null || echo 0)
-          echo "Ukuran model: $SIZE byte"
+          set -e
+          mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/weights
+          HF_BASE="https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/pretrained_v2"
+
+          case "$MODEL_CHOICE" in
+            f0G40k)
+              URL="$HF_BASE/f0G40k.pth" ;;
+            pretrained_female)
+              URL="$HF_BASE/f0G40k.pth" ;;
+            pretrained_male)
+              URL="$HF_BASE/f0G40k.pth" ;;
+            custom_female)
+              URL="https://github.com/yadngapain-eng/rvc-voice-changer/releases/download/v1.0/female_model.pth" ;;
+            *)
+              echo "::error::Model tidak dikenal: $MODEL_CHOICE"; exit 1 ;;
+          esac
+
+          DEST="Retrieval-based-Voice-Conversion-WebUI/assets/weights/${MODEL_CHOICE}.pth"
+          echo "Download $MODEL_CHOICE dari $URL"
+          curl -fL -o "$DEST" "$URL"
+
+          SIZE=$(stat -c%s "$DEST")
+          echo "Ukuran: $SIZE byte"
           if [ "$SIZE" -lt 1000000 ]; then
-            echo "::error::Model terlalu kecil ($SIZE byte), kemungkinan 404/error page"
-            head -c 200 "$MODEL" || true
+            echo "::error::File terlalu kecil ($SIZE byte)"
+            head -c 300 "$DEST" || true
             exit 1
           fi
 
       - name: Run Voice Changer
+        env:
+          MODEL_CHOICE: ${{ github.event.inputs.model_choice }}
         run: |
-          python voice_changer.py "${{ github.event.inputs.audio_url }}"
+          python voice_changer.py "${{ github.event.inputs.audio_url }}" "$MODEL_CHOICE"
 
       - name: Upload Result
         uses: actions/upload-artifact@v4
         with:
-          name: Hasil-Suara
+          name: Hasil-Suara-${{ github.event.inputs.model_choice }}
           path: output.wav
