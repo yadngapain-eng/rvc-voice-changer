@@ -1,0 +1,11 @@
+
+torch
+torchaudio
+faiss-cpu
+fairseq
+ffmpeg-python
+librosa
+gdown
+praat-parselmouth
+pyworld
+tensorboard
