@@ -1,5 +1,4 @@
 
-torch
 torchaudio
 faiss-cpu
 ffmpeg-python
