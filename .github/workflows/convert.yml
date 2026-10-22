@@ -131,9 +131,22 @@ jobs:
           DEST_DIR="Retrieval-based-Voice-Conversion-WebUI/assets/weights"
           BASE_URL="https://github.com/yadngapain-eng/rvc-voice-changer/releases/download/v1.0"
 
-          # Download model .pth
-          echo "Mengunduh $MODEL_CHOICE.pth..."
-          curl -fL -o "$DEST_DIR/$MODEL_CHOICE.pth" "$BASE_URL/$MODEL_CHOICE.pth"
+          # Download model .pth (dengan fallback anti-404)
+          URL="$BASE_URL/$MODEL_CHOICE.pth"
+          echo "Mengunduh dari: $URL"
+          if ! curl -fsIL "$URL" | head -1 | grep -q "200"; then
+            echo "::warning::URL 404. Mencari nama file .pth yang tersedia di release..."
+            RELEASE_API="https://api.github.com/repos/yadngapain-eng/rvc-voice-changer/releases/tags/v1.0"
+            AVAILABLE=$(curl -sfL "$RELEASE_API" | grep -oP '"name":\s*"\K[^"]*\.pth' | head -1)
+            if [ -n "$AVAILABLE" ]; then
+              echo "Fallback ke model: $AVAILABLE"
+              URL="$BASE_URL/$AVAILABLE"
+            else
+              echo "::error::Tidak ada file .pth yang ditemukan di release API"
+              exit 1
+            fi
+          fi
+          curl -fL -o "$DEST_DIR/$MODEL_CHOICE.pth" "$URL"
 
           # Download index file (sama untuk semua model)
           echo "Mengunduh index file..."
