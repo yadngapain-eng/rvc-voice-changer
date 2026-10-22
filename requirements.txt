@@ -1,5 +1,4 @@
 
-torchaudio
 faiss-cpu
 ffmpeg-python
 librosa
