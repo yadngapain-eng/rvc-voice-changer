@@ -129,8 +129,19 @@ jobs:
       - name: Download Model from Release
         run: |
           mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/weights
-          curl -L -o Retrieval-based-Voice-Conversion-WebUI/assets/weights/female_model.pth \
+          curl -fL -o Retrieval-based-Voice-Conversion-WebUI/assets/weights/female_model.pth \
           https://github.com/yadngapain-eng/rvc-voice-changer/releases/download/v1.0/female_model.pth
+
+      - name: Verifikasi model terunduh
+        run: |
+          MODEL="Retrieval-based-Voice-Conversion-WebUI/assets/weights/female_model.pth"
+          SIZE=$(stat -c%s "$MODEL" 2>/dev/null || echo 0)
+          echo "Ukuran model: $SIZE byte"
+          if [ "$SIZE" -lt 1000000 ]; then
+            echo "::error::Model terlalu kecil ($SIZE byte), kemungkinan 404/error page"
+            head -c 200 "$MODEL" || true
+            exit 1
+          fi
 
       - name: Run Voice Changer
         run: |

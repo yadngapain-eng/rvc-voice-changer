@@ -1,4 +1,3 @@
-
 import os
 import sys
 import subprocess
@@ -15,35 +14,55 @@ def run_cmd(cmd):
     print(f"Menjalankan: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
-# Hanya butuh 1 argumen: Link Audio GDrive
+
+if len(sys.argv) < 2:
+    print("Usage: python voice_changer.py <audio_url>")
+    sys.exit(1)
+
 audio_url = sys.argv[1]
-
-# --- 1. CEK CACHE RVC ---
 rvc_dir = "Retrieval-based-Voice-Conversion-WebUI"
-if not os.path.exists(rvc_dir):
-    print("Folder RVC belum ada. Meng-clone dari GitHub...")
-    run_cmd(["git", "clone", "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI.git", rvc_dir])
-else:
-    print("✅ Folder RVC sudah ada di cache. Skip clone.")
 
-os.chdir(rvc_dir)
+# --- 1. CEK FOLDER RVC ---
+if not os.path.isdir(rvc_dir):
+    print("Folder RVC belum ada. Meng-clone dari GitHub...")
+    run_cmd(["git", "clone",
+             "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI.git",
+             rvc_dir])
+else:
+    print("Folder RVC sudah ada. Skip clone.")
 
 # --- 2. DOWNLOAD AUDIO DARI GDRIVE ---
 print("Mengunduh file audio dari Google Drive...")
-gdown.download(audio_url, "../input.wav", quiet=False, fuzzy=True)
+# Simpan input di root repo (bukan di dalam rvc_dir)
+input_wav = os.path.abspath("input.wav")
+output_wav = os.path.abspath("output.wav")
 
-# Model sudah diunduh otomatis oleh Workflow GitHub ke assets/weights/female_model.pth
-model_path = "female_model.pth"
+# gdown 6.x tidak punya 'fuzzy'; deteksi otomatis URL GDrive
+result = gdown.download(audio_url, input_wav, quiet=False)
+if result is None or not os.path.exists(input_wav):
+    print("Gagal mengunduh audio dari Google Drive.")
+    sys.exit(1)
+print(f"Audio tersimpan di: {input_wav}")
 
 # --- 3. PROSES KONVERSI ---
+os.chdir(rvc_dir)
+
+# Path model relatif ke rvc_dir
+model_name = "female_model"  # tanpa .pth, RVC mencari di assets/weights/
+model_file = os.path.join("assets", "weights", f"{model_name}.pth")
+if not os.path.exists(model_file):
+    print(f"PERINGATAN: model {model_file} tidak ada!")
+    print("File .pth mungkin 404 saat diunduh. Cek GitHub Release.")
+    sys.exit(1)
+
 print("Memulai konversi suara (CPU Mode)...")
 cmd = [
-    "python", "infer_cli.py",
-    "--input_path", "../input.wav",
-    "--opt_path", "../output.wav",
-    "--model_name", model_path,
+    sys.executable, "infer_cli.py",
+    "--input_path", input_wav,
+    "--opt_path",  output_wav,
+    "--model_name", model_name,
     "--f0method", "rmvpe",
-    "--f0up_key", "12" 
+    "--f0up_key", "12",
 ]
 
 try:
@@ -51,8 +70,11 @@ try:
     print("Konversi Berhasil!")
 except Exception as e:
     print(f"Error: {e}")
-    print("Mencoba metode fallback (hanya ubah pitch)...")
-    run_cmd(["ffmpeg", "-y", "-i", "../input.wav", "-af", "asetrate=44100*1.4,aresample=44100", "../output.wav"])
+    print("Fallback: ubah pitch dengan ffmpeg...")
+    run_cmd(["ffmpeg", "-y", "-i", input_wav,
+             "-af", "asetrate=44100*1.4,aresample=44100",
+             output_wav])
+finally:
+    os.chdir("..")
 
-os.chdir("..")
 print("Selesai.")
