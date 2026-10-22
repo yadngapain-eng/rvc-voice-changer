@@ -26,16 +26,16 @@ jobs:
         id: pip-cache
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v10
+          key: ${{ runner.os }}-pip-rvc-v12
           restore-keys: |
-            ${{ runner.os }}-pip-rvc-v10
+            ${{ runner.os }}-pip-rvc-v12
 
       - name: Cache RVC Repo
         uses: actions/cache@v4
         id: rvc-cache
         with:
           path: Retrieval-based-Voice-Conversion-WebUI
-          key: ${{ runner.os }}-rvc-repo-v10
+          key: ${{ runner.os }}-rvc-repo-v12
 
       - name: Install System Dependencies
         run: |
@@ -48,23 +48,17 @@ jobs:
 
       - name: Install Torch CPU Only
         run: |
-          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install torch==2.14.1+cpu torchaudio==2.11.0+cpu --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install Python Dependencies
         if: steps.pip-cache.outputs.cache-hit != 'true'
         run: |
-          pip install -r requirements.txt
+          pip install -r requirements.txt -c constraints.txt
 
-      # TRIK FAKE PACKAGE: Buat folder torch palsu
-      - name: Install Fairseq with Fake Torch Package
+      # Install fairseq dengan flag --no-deps dan constraints
+      - name: Install Fairseq
         run: |
-          # Buat folder 'torch' palsu dengan file __init__.py kosong
-          mkdir -p torch
-          echo "" > torch/__init__.py
-          # Install fairseq, pip akan melihat folder 'torch' dan menganggap torch sudah terpasang
-          pip install git+https://github.com/facebookresearch/fairseq.git --no-deps
-          # Hapus folder palsu setelah selesai
-          rm -rf torch
+          pip install git+https://github.com/facebookresearch/fairseq.git --no-deps -c constraints.txt
 
       - name: Install RVC Dependencies
         if: steps.rvc-cache.outputs.cache-hit != 'true'
