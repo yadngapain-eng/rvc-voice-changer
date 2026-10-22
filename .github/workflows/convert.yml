@@ -14,6 +14,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # ---------------------------------------------------------------
+      # 1. Bebaskan disk space (fix "No space left on device")
+      # ---------------------------------------------------------------
       - name: Free Disk Space
         run: |
           echo "Before:"
@@ -36,16 +39,25 @@ jobs:
         id: pip-cache
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v13
+          key: ${{ runner.os }}-pip-rvc-v14
           restore-keys: |
-            ${{ runner.os }}-pip-rvc-v13
+            ${{ runner.os }}-pip-rvc-v14
 
       - name: Cache RVC Repo
         uses: actions/cache@v4
         id: rvc-cache
         with:
           path: Retrieval-based-Voice-Conversion-WebUI
-          key: ${{ runner.os }}-rvc-repo-v13
+          key: ${{ runner.os }}-rvc-repo-v14
+
+      # ---------------------------------------------------------------
+      # 2. Clone repo RVC (sebelumnya TIDAK ADA -> "No such file or directory")
+      # ---------------------------------------------------------------
+      - name: Clone RVC Repo
+        if: steps.rvc-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI.git \
+            Retrieval-based-Voice-Conversion-WebUI
 
       - name: Install System Dependencies
         run: |
@@ -56,32 +68,50 @@ jobs:
         run: |
           python -m pip install --upgrade pip==23.3.2
 
+      # ---------------------------------------------------------------
+      # 3. Torch CPU — pakai pasangan versi yang valid
+      # ---------------------------------------------------------------
       - name: Install Torch CPU Only
         run: |
-          pip install torch==2.14.1+cpu torchaudio==2.11.0+cpu \
+          pip install torch==2.4.1+cpu torchaudio==2.4.1+cpu \
             --index-url https://download.pytorch.org/whl/cpu
 
+      # ---------------------------------------------------------------
+      # 4. Build tools untuk --no-build-isolation
+      # ---------------------------------------------------------------
       - name: Install Build Tools
         run: |
           pip install setuptools wheel cython
 
+      # ---------------------------------------------------------------
+      # 5. Install requirements (TANPA kondisi if: -> cache pip tidak
+      #    menyimpan paket terinstal, hanya wheel)
+      # ---------------------------------------------------------------
       - name: Install Python Dependencies
-        if: steps.pip-cache.outputs.cache-hit != 'true'
         run: |
           pip install -r requirements.txt -c constraints.txt
 
-      # PENTING: --no-build-isolation supaya pip pakai torch CPU yang sudah ada,
-      # bukan download ulang torch+CUDA (~3 GB) ke build env terpisah.
+      # ---------------------------------------------------------------
+      # 6. fairseq: --no-build-isolation supaya pakai torch CPU yang
+      #    sudah ada, bukan download ulang torch+CUDA (~3 GB)
+      # ---------------------------------------------------------------
       - name: Install Fairseq
         run: |
           pip install git+https://github.com/facebookresearch/fairseq.git \
             --no-deps --no-build-isolation -c constraints.txt
 
-      # fairseq dengan --no-deps tidak memasang dependensi runtime-nya.
-      # Tambahkan manual supaya tidak ModuleNotFoundError saat runtime.
+      # ---------------------------------------------------------------
+      # 7. Deps runtime fairseq — versi yang SESUAI dengan fairseq 0.12.2
+      #    (fairseq butuh hydra-core<1.1, omegaconf<2.1, sacrebleu)
+      # ---------------------------------------------------------------
       - name: Install Fairseq Runtime Deps
         run: |
-          pip install hydra-core omegaconf sacremoses bitarray
+          pip install \
+            "hydra-core>=1.0.7,<1.1" \
+            "omegaconf>=2.0,<2.1" \
+            "sacrebleu>=1.4.12" \
+            sacremoses \
+            bitarray
 
       - name: Install RVC Dependencies
         if: steps.rvc-cache.outputs.cache-hit != 'true'
