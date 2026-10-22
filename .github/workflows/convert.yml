@@ -26,44 +26,46 @@ jobs:
         id: pip-cache
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v4
+          key: ${{ runner.os }}-pip-rvc-v5
           restore-keys: |
-            ${{ runner.os }}-pip-rvc-v4
+            ${{ runner.os }}-pip-rvc-v5
 
       - name: Cache RVC Repo
         uses: actions/cache@v4
         id: rvc-cache
         with:
           path: Retrieval-based-Voice-Conversion-WebUI
-          key: ${{ runner.os }}-rvc-repo-v4
+          key: ${{ runner.os }}-rvc-repo-v5
 
       - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1
 
-      # TRIK: Downgrade pip agar fairseq bisa di-build
       - name: Downgrade Pip
         run: |
           python -m pip install --upgrade pip==23.3.2
+
+      # TRIK UTAMA: Install Torch versi CPU saja (Ringan, hemat disk)
+      - name: Install Torch CPU Only
+        run: |
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install Python Dependencies
         if: steps.pip-cache.outputs.cache-hit != 'true'
         run: |
           pip install -r requirements.txt
-          # Install fairseq versi fork yang sudah diperbaiki (kompatibel dengan pip baru)
           pip install git+https://github.com/One-sixth/fairseq.git
 
       - name: Install RVC Dependencies
         if: steps.rvc-cache.outputs.cache-hit != 'true'
         run: |
           cd Retrieval-based-Voice-Conversion-WebUI
-          # Hapus baris fairseq dari requirements RVC asli agar tidak error
-          grep -v "fairseq" requirements.txt > requirements_fixed.txt
+          # Hapus torch dan fairseq dari requirements RVC asli agar tidak menimpa versi CPU
+          grep -v -E "torch|fairseq" requirements.txt > requirements_fixed.txt
           pip install -r requirements_fixed.txt
           cd ..
 
-      # UNDUH MODEL DARI RELEASE GITHUB
       - name: Download Model from Release
         run: |
           mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/weights
