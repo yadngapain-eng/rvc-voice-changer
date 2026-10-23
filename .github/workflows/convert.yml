@@ -115,52 +115,20 @@ jobs:
             curl -fL -o "Retrieval-based-Voice-Conversion-WebUI/assets/rmvpe/rmvpe.pt" "$HF/rmvpe.pt" || true
           fi
 
-      - name: Download Selected Model & Index
+      - name: Download Selected Model & Index (via API)
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MODEL_CHOICE: ${{ github.event.inputs.model_choice }}
         run: |
-          set -e
-          mkdir -p Retrieval-based-Voice-Conversion-WebUI/assets/weights
-          DEST_DIR="Retrieval-based-Voice-Conversion-WebUI/assets/weights"
-          BASE_URL="https://github.com/yadngapain-eng/rvc-voice-changer/releases/download/v1.0"
-
-          # Download model .pth (dengan fallback anti-404)
-          URL="$BASE_URL/$MODEL_CHOICE.pth"
-          echo "Mengunduh dari: $URL"
-          if ! curl -fsIL "$URL" | head -1 | grep -q "200"; then
-            echo "::warning::URL 404. Mencari nama file .pth yang tersedia di release..."
-            RELEASE_API="https://api.github.com/repos/yadngapain-eng/rvc-voice-changer/releases/tags/v1.0"
-            AVAILABLE=$(curl -sfL "$RELEASE_API" | grep -oP '"name":\s*"\K[^"]*\.pth' | head -1)
-            if [ -n "$AVAILABLE" ]; then
-              echo "Fallback ke model: $AVAILABLE"
-              # Ubah MODEL_CHOICE agar sesuai dengan file yang diunduh
-              MODEL_CHOICE="${AVAILABLE%.pth}"
-              URL="$BASE_URL/$AVAILABLE"
-            else
-              echo "::error::Tidak ada file .pth yang ditemukan di release API"
-              exit 1
-            fi
-          fi
-          curl -fL -o "$DEST_DIR/$MODEL_CHOICE.pth" "$URL"
-          echo "MODEL_CHOICE=$MODEL_CHOICE" >> $GITHUB_ENV
-
-          # Download index file (sama untuk semua model)
-          echo "Mengunduh index file..."
-          curl -fL -o "$DEST_DIR/trained_IVF832_Flat_nprobe_1_v2.index" "$BASE_URL/trained_IVF832_Flat_nprobe_1_v2.index"
-
-          # Verifikasi ukuran model (> 10MB)
-          SIZE=$(stat -c%s "$DEST_DIR/$MODEL_CHOICE.pth")
-          if [ "$SIZE" -lt 10000000 ]; then
-            echo "::error::Model terlalu kecil ($SIZE byte)"
-            exit 1
-          fi
-          echo "✓ Model dan index berhasil diunduh."
+          python download_model.py "$MODEL_CHOICE" "trained_IVF832_Flat_nprobe_1_v2.index" "Retrieval-based-Voice-Conversion-WebUI/assets/weights"
 
       - name: Run Voice Changer
         env:
           MODEL_CHOICE: ${{ github.event.inputs.model_choice }}
         run: |
-          python voice_changer.py "${{ github.event.inputs.audio_url }}" "$MODEL_CHOICE"
+          # Baca nama model (jika fallback terjadi, nama mungkin berbeda)
+          ACTUAL_MODEL=$(cat model_name.txt || echo "$MODEL_CHOICE")
+          python voice_changer.py "${{ github.event.inputs.audio_url }}" "$ACTUAL_MODEL"
 
       - name: Upload Result
         uses: actions/upload-artifact@v4
