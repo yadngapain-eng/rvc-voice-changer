@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v18
+          key: ${{ runner.os }}-pip-rvc-v19
 
       - name: Clone RVC Repo (Fork Stabil)
         run: |
@@ -146,6 +146,23 @@ jobs:
             exit 1
           fi
           echo "✓ Model ditemukan: $MODEL_PATH"
+
+      - name: Link RVC Assets to Repo Root
+
+        run: |
+
+          # infer_cli.py dijalankan dari root repo; model & index
+
+          # ada di Retrieval-based-Voice-Conversion-WebUI/assets/.
+
+          # Symlink agar path relatif 'assets/weights/...' resolve.
+
+          ln -sfn Retrieval-based-Voice-Conversion-WebUI/assets assets
+
+          echo "=== Isi assets/weights/ dari root repo ==="
+
+          ls -la assets/weights/ | head -20
+
 
       - name: Run Voice Changer
         env:
