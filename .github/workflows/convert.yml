@@ -46,15 +46,9 @@ jobs:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-rvc-v16
 
-      - name: Cache RVC Repo
-        uses: actions/cache@v4
-        id: rvc-cache
-        with:
-          path: Retrieval-based-Voice-Conversion-WebUI
-          key: ${{ runner.os }}-rvc-repo-v16
-
       - name: Clone RVC Repo (Fork Stabil)
         run: |
+          rm -rf Retrieval-based-Voice-Conversion-WebUI
           git clone https://github.com/Nats-ji/Retrieval-based-Voice-Conversion-WebUI.git Retrieval-based-Voice-Conversion-WebUI
           cd Retrieval-based-Voice-Conversion-WebUI
           git checkout 6061f636f85acb689120aade1e3e69b039335734
