@@ -27,3 +27,4 @@ Retrieval-based-Voice-Conversion-WebUI/
 # Output
 output.wav
 outputs/
+*.index
