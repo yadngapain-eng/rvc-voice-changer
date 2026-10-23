@@ -19,9 +19,11 @@ audio_url  = sys.argv[1]
 model_name = sys.argv[2] if len(sys.argv) > 2 else "V2-AISO-HOWATTO"
 
 rvc_dir = "Retrieval-based-Voice-Conversion-WebUI"
+
+# Pastikan folder ada (Workflow YAML yang bertanggung jawab meng-clone & checkout)
 if not os.path.isdir(rvc_dir):
-    print("Folder RVC belum ada. Clone...")
-    run_cmd(["git", "clone", "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI.git", rvc_dir])
+    print("Error: Folder RVC tidak ditemukan. Pastikan step Clone di YAML berhasil!")
+    sys.exit(1)
 
 print("Mengunduh file audio dari Google Drive...")
 input_wav  = os.path.abspath("input.wav")
@@ -34,10 +36,11 @@ if result is None or not os.path.exists(input_wav):
 
 os.chdir(rvc_dir)
 
-# Path infer_cli.py sudah pasti ada di root pada versi commit ini
+# Cek infer_cli.py
 infer_script = "infer_cli.py"
 if not os.path.exists(infer_script):
     print("Error: infer_cli.py tidak ditemukan di folder repo RVC!")
+    print("Isi folder saat ini:", os.listdir("."))
     sys.exit(1)
 
 model_file = os.path.join("assets", "weights", f"{model_name}.pth")
