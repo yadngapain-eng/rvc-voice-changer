@@ -59,7 +59,7 @@ jobs:
           git clone https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI.git Retrieval-based-Voice-Conversion-WebUI
           cd Retrieval-based-Voice-Conversion-WebUI
           # Checkout ke commit yang masih memiliki infer_cli.py
-          git checkout 7b1b8a3c9b8a2731d44b7e84c40549ad7e0d1f90
+          git checkout e70f5b2fefd7bd5b8d8a4ed4f5b1b0d13e1a97e9
           cd ..
 
       - name: Install System Dependencies
