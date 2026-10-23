@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v17
+          key: ${{ runner.os }}-pip-rvc-v18
 
       - name: Clone RVC Repo (Fork Stabil)
         run: |
@@ -95,8 +95,8 @@ jobs:
       - name: Install RVC Core Dependencies
         run: |
           # Dependensi inti yang dibutuhkan infer_cli.py.
-          # python-dotenv WAJIB ada, kalau tidak infer_cli.py akan crash
-          # dan workflow akan jatuh ke fallback ffmpeg (suara default).
+          # python-dotenv WAJIB ada, kalau tidak infer_cli.py akan crash.
+          # av (PyAV) WAJIB ada untuk infer/lib/audio.py.
           pip install \
             "numpy<2.0" \
             "scipy" \
@@ -112,7 +112,8 @@ jobs:
             "python-dotenv" \
             "tqdm" \
             "requests" \
-            "PyYAML"
+            "PyYAML" \
+            "av"
 
       - name: Download RVC Pretrained Base
         run: |
