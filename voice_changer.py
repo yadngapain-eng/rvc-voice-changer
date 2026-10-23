@@ -34,14 +34,11 @@ if result is None or not os.path.exists(input_wav):
 
 os.chdir(rvc_dir)
 
-# RVC menggunakan tools/infer_cli.py
-infer_script = "tools/infer_cli.py"
+# Path infer_cli.py sudah pasti ada di root pada versi commit ini
+infer_script = "infer_cli.py"
 if not os.path.exists(infer_script):
-    # Fallback jika nama file berbeda di versi repo tertentu
-    infer_script = "infer_cli.py"
-    if not os.path.exists(infer_script):
-        print("Error: infer_cli.py tidak ditemukan di folder repo RVC!")
-        sys.exit(1)
+    print("Error: infer_cli.py tidak ditemukan di folder repo RVC!")
+    sys.exit(1)
 
 model_file = os.path.join("assets", "weights", f"{model_name}.pth")
 index_file = os.path.join("assets", "weights", "trained_IVF832_Flat_nprobe_1_v2.index")

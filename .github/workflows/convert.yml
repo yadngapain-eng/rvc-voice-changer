@@ -53,11 +53,14 @@ jobs:
           path: Retrieval-based-Voice-Conversion-WebUI
           key: ${{ runner.os }}-rvc-repo-v16
 
-      - name: Clone RVC Repo
+      - name: Clone RVC Repo (Pinned Version)
         if: steps.rvc-cache.outputs.cache-hit != 'true'
         run: |
-          git clone --depth 1 https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI.git \
-            Retrieval-based-Voice-Conversion-WebUI
+          git clone https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI.git Retrieval-based-Voice-Conversion-WebUI
+          cd Retrieval-based-Voice-Conversion-WebUI
+          # Checkout ke commit yang masih memiliki infer_cli.py
+          git checkout 7b1b8a3c9b8a2731d44b7e84c40549ad7e0d1f90
+          cd ..
 
       - name: Install System Dependencies
         run: |
