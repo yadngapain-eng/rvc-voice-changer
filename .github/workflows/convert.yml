@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-rvc-v16
+          key: ${{ runner.os }}-pip-rvc-v17
 
       - name: Clone RVC Repo (Fork Stabil)
         run: |
@@ -94,9 +94,25 @@ jobs:
 
       - name: Install RVC Core Dependencies
         run: |
-          # Repo RVC tidak selalu menyediakan requirements.txt di root.
-          # Instal dependensi inti secara manual yang dibutuhkan infer_cli.
-          pip install             "numpy<2.0"             "scipy"             "librosa"             "soundfile"             "ffmpeg-python"             "tensorboard"             "torchcrepe"             "faiss-cpu"             "praat-parselmouth"             "pyworld"             "edge-tts"
+          # Dependensi inti yang dibutuhkan infer_cli.py.
+          # python-dotenv WAJIB ada, kalau tidak infer_cli.py akan crash
+          # dan workflow akan jatuh ke fallback ffmpeg (suara default).
+          pip install \
+            "numpy<2.0" \
+            "scipy" \
+            "librosa" \
+            "soundfile" \
+            "ffmpeg-python" \
+            "tensorboard" \
+            "torchcrepe" \
+            "faiss-cpu" \
+            "praat-parselmouth" \
+            "pyworld" \
+            "edge-tts" \
+            "python-dotenv" \
+            "tqdm" \
+            "requests" \
+            "PyYAML"
 
       - name: Download RVC Pretrained Base
         run: |
@@ -105,11 +121,11 @@ jobs:
           HF="https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main"
           # hubert_base.pt
           if [ ! -f "Retrieval-based-Voice-Conversion-WebUI/assets/hubert_base.pt" ]; then
-            curl -fL -o "Retrieval-based-Voice-Conversion-WebUI/assets/hubert_base.pt" "$HF/hubert_base.pt" || true
+            curl -fL -o "Retrieval-based-Voice-Conversion-WebUI/assets/hubert_base.pt" "$HF/hubert_base.pt"
           fi
           # rmvpe.pt
           if [ ! -f "Retrieval-based-Voice-Conversion-WebUI/assets/rmvpe/rmvpe.pt" ]; then
-            curl -fL -o "Retrieval-based-Voice-Conversion-WebUI/assets/rmvpe/rmvpe.pt" "$HF/rmvpe.pt" || true
+            curl -fL -o "Retrieval-based-Voice-Conversion-WebUI/assets/rmvpe/rmvpe.pt" "$HF/rmvpe.pt"
           fi
 
       - name: Download Selected Model & Index (via API)
@@ -118,6 +134,17 @@ jobs:
           MODEL_CHOICE: ${{ github.event.inputs.model_choice }}
         run: |
           python download_model.py "$MODEL_CHOICE" "trained_IVF832_Flat_nprobe_1_v2.index" "Retrieval-based-Voice-Conversion-WebUI/assets/weights"
+
+      - name: Verify Model Files Downloaded
+        run: |
+          echo "=== Isi assets/weights ==="
+          ls -la Retrieval-based-Voice-Conversion-WebUI/assets/weights/ || true
+          MODEL_PATH="Retrieval-based-Voice-Conversion-WebUI/assets/weights/${{ github.event.inputs.model_choice }}.pth"
+          if [ ! -f "$MODEL_PATH" ]; then
+            echo "::error::Model $MODEL_PATH tidak ditemukan! Inferensi RVC akan gagal."
+            exit 1
+          fi
+          echo "✓ Model ditemukan: $MODEL_PATH"
 
       - name: Run Voice Changer
         env:
