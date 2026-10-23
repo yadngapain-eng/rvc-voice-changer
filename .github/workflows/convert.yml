@@ -95,18 +95,11 @@ jobs:
             sacremoses \
             bitarray
 
-      - name: Install RVC Dependencies
-        if: steps.rvc-cache.outputs.cache-hit != 'true'
+      - name: Install RVC Core Dependencies
         run: |
-          cd Retrieval-based-Voice-Conversion-WebUI
-          REQ=$(find . -maxdepth 2 -name "requirements*.txt" | head -1)
-          if [ -z "$REQ" ]; then
-            echo "::warning::requirements.txt tidak ditemukan, skip"
-          else
-            grep -v -E "torch|fairseq" "$REQ" > requirements_fixed.txt
-            pip install -r requirements_fixed.txt
-          fi
-          cd ..
+          # Repo RVC tidak selalu menyediakan requirements.txt di root.
+          # Instal dependensi inti secara manual yang dibutuhkan infer_cli.
+          pip install             "numpy<2.0"             "scipy"             "librosa"             "soundfile"             "ffmpeg-python"             "tensorboard"             "torchcrepe"             "faiss-cpu"             "praat-parselmouth"             "pyworld"             "edge-tts"
 
       - name: Download RVC Pretrained Base
         run: |
@@ -140,6 +133,8 @@ jobs:
             AVAILABLE=$(curl -sfL "$RELEASE_API" | grep -oP '"name":\s*"\K[^"]*\.pth' | head -1)
             if [ -n "$AVAILABLE" ]; then
               echo "Fallback ke model: $AVAILABLE"
+              # Ubah MODEL_CHOICE agar sesuai dengan file yang diunduh
+              MODEL_CHOICE="${AVAILABLE%.pth}"
               URL="$BASE_URL/$AVAILABLE"
             else
               echo "::error::Tidak ada file .pth yang ditemukan di release API"
@@ -147,6 +142,7 @@ jobs:
             fi
           fi
           curl -fL -o "$DEST_DIR/$MODEL_CHOICE.pth" "$URL"
+          echo "MODEL_CHOICE=$MODEL_CHOICE" >> $GITHUB_ENV
 
           # Download index file (sama untuk semua model)
           echo "Mengunduh index file..."
