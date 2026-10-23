@@ -5,3 +5,4 @@ gdown
 praat-parselmouth
 pyworld
 tensorboard
+requests>=2.31.0
